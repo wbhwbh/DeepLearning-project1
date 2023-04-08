@@ -1,0 +1,43 @@
+import numpy as np
+import pandas as pd
+import utils
+from model import NeuralNetwork
+from optimizer import SGD
+import warnings
+warnings.filterwarnings("ignore")
+
+np.random.seed(0)
+
+
+batch_size = 16
+epochs= 100
+layers = [[784, 40, 10], [784, 60, 10], [784, 80, 10]]
+learning_rates = [1e-2, 2e-2, 5e-2]
+weight_decaies = [0, 1e-3, 1e-2] # L2 Penalty
+
+print('Loading dataset...')
+train_data, val_data, test_data = utils.load_mnist()
+
+print('Training models...')
+best_config = {'accuracy': 0}
+for layer in layers:
+    for learning_rate in learning_rates:
+        for weight_decay in weight_decaies:
+            print(f"**Current layer: {layer}, Current learning rate: {learning_rate}, Current weight decay: {weight_decay}")
+            model = NeuralNetwork(layer)
+            optimizer = SGD(model, learning_rate, weight_decay, batch_size)
+            accuracy = utils.fit(model, optimizer, train_data, val_data, epochs)
+            if accuracy > best_config['accuracy']:
+                best_config['accuracy'] = accuracy
+                best_config['layer'] = layer
+                best_config['learning_rate'] = learning_rate
+                best_config['weight_decay'] = weight_decay
+
+print("Testing...")
+model = NeuralNetwork(best_config['layer'])
+model.load(f"model_{best_config['layer'][1]}_{best_config['learning_rate']}_{best_config['weight_decay']}.npz")
+utils.test(model, test_data)
+
+print("Visualizing...")
+log = pd.read_csv(f"logs/log_{best_config['layer'][1]}_{best_config['learning_rate']}_{best_config['weight_decay']}.csv")
+utils.visualize(model, log)
